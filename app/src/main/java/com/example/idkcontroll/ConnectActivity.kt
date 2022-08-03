@@ -1,6 +1,7 @@
 package com.example.idkcontroll
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
@@ -8,54 +9,116 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.view.textclassifier.ConversationActions
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
+import com.example.idkcontroll.databinding.ActivityConnectBinding
+import com.example.idkcontroll.databinding.ActivityLearnBinding
 
 class ConnectActivity : AppCompatActivity() {
+    private lateinit var binding: ActivityConnectBinding
     private lateinit var btManager: BluetoothManager
     private var btAdapter: BluetoothAdapter? = null
     private lateinit var devices: Set<BluetoothDevice>
-    private val reqEnableBt = 1
+
+    fun getDevices(): Set<BluetoothDevice> {
+        return devices
+    }
+
+    private val perms = arrayOf(
+        Manifest.permission.BLUETOOTH
+    )
+
+    private val REQUESTCODE_BT = 1
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        binding = ActivityConnectBinding.inflate(layoutInflater)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_connect)
-        btManager = getSystemService(BluetoothManager::class.java)
-        btAdapter = btManager.adapter
-        if (btAdapter == null)
-        {
-            Toast.makeText(this, "No bluetooth", Toast.LENGTH_LONG).show()
-            throw Exception("You are poor")
+        var counter = 0
+
+        if (!checkAllPerms()) {
+            requestBt()
         }
 
-        if (!btAdapter!!.isEnabled)
-        {
-            if (ActivityCompat.checkSelfPermission(
-                    this,
-                    Manifest.permission.BLUETOOTH_CONNECT
-                ) != PackageManager.PERMISSION_GRANTED
+        btManager = getSystemService(BluetoothManager::class.java)
+        btAdapter = btManager.adapter
+
+        if (btAdapter == null) {
+            Toast.makeText(this, "No bluetooth", Toast.LENGTH_LONG).show()
+            return
+        }
+        if (!checkAllPerms()) {
+            Log.w("Second Check: ", "Start")
+            requestBt()
+            Log.w("Second Check: ", "End")
+        } else {
+            turnOnBluetooth()
+        }
+    }
+
+    private fun checkAllPerms(): Boolean {
+        for (perm in perms) {
+            if (ActivityCompat.checkSelfPermission(this, perm)
+                != PackageManager.PERMISSION_GRANTED
             ) {
-                // TODO: Consider calling
-                //    ActivityCompat#requestPermissions
-                // here to request the missing permissions, and then overriding
-                //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-                //                                          int[] grantResults)
-                // to handle the case where the user grants the permission. See the documentation
-                // for ActivityCompat#requestPermissions for more details.
-                Toast.makeText(this, "you gimme perm", Toast.LENGTH_LONG).show()
-                return
+                Log.w( "checkAllPerms: ", perm)
+                return false
             }
+        }
+        Log.i("checkAllPerms: ", "Everything passed")
+        return true
+    }
+
+
+    @SuppressLint("MissingPermission")
+    private fun turnOnBluetooth() {
+        if (btAdapter?.isEnabled == false) {
             startActivity(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE))
         }
     }
 
-    fun pairedDeviceList(): Unit
-    {
+    @SuppressLint("MissingPermission")
+    fun pairedDeviceList() {
+        devices = btAdapter!!.bondedDevices
 
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    fun requestBt(): Unit {
+        ActivityCompat.requestPermissions(this, perms, REQUESTCODE_BT)
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == REQUESTCODE_BT) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.i("requestPerm", "Set perms")
+                turnOnBluetooth()
+                with(binding.refreshBtn)
+                {
+                    text = getString(R.string.refresh)
+                    setOnClickListener {
+                    }
+                }
+            } else {
+                Log.i("requestPerm", "Declined perms")
+                with(binding.refreshBtn)
+                {
+                    text = "Provide permission"
+                    setOnClickListener {
+                        requestBt()
+                    }
+                }
+            }
+        }
     }
 }
