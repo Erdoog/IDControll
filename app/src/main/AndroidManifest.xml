@@ -16,13 +16,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.IDKControllIWIllEndUpFinishingAnyway">
         <activity
+            android:name=".ControlActivity"
+            android:exported="false" />
+        <activity
             android:name=".ConnectActivity"
-            android:exported="false" />
-        <activity
-            android:name=".LearnActivity"
-            android:exported="false" />
-        <activity
-            android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

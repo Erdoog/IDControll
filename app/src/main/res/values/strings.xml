@@ -4,4 +4,6 @@
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="witness_me">Witness me</string>
     <string name="refresh">Refresh</string>
+    <string name="pairing">Pairing...</string>
+    <string name="bluetooth_logo">Bluetooth logo</string>
 </resources>
