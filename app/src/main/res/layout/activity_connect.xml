@@ -17,8 +17,9 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <Button
-        android:id="@+id/refreshBtn"
-        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:id="@+id/refreshBTBtn"
+        android:backgroundTint="@color/cyan_700"
+        android:textColor="@color/white"
         android:layout_width="0dp"
         android:layout_height="48dp"
         android:layout_marginStart="12dp"

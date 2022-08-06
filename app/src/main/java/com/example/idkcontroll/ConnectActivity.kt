@@ -5,20 +5,18 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
-import android.view.textclassifier.ConversationActions
 import android.widget.Button
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
-import androidx.core.app.ActivityCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.example.idkcontroll.connectrecycler.ItemAdapter
 import kotlin.system.exitProcess
 
 class ConnectActivity : AppCompatActivity() {
@@ -28,21 +26,23 @@ class ConnectActivity : AppCompatActivity() {
     private lateinit var btManager: BluetoothManager
     private var btAdapter: BluetoothAdapter? = null
     private lateinit var devices: Set<BluetoothDevice>
-    private lateinit var rcAdapter: ItemAdapter
+    private lateinit var rcAdapter: AdapterBT
     private val onItemClick: (Int) -> Unit = {pos ->
         run {
-            var connectIntent = Intent(this, ControlActivity::class.java)
+            val connectIntent = Intent(this, ControlActivity::class.java)
             connectIntent.putExtra(macadressExtraName, devices.toList()[pos].address)
             startActivity(connectIntent)
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
     private val perms = arrayOf(
         Manifest.permission.BLUETOOTH_CONNECT
     )
 
-    private val REQUEST_CODE_BT = 1
+    private val bTRQ = 1
 
+    @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         devices = setOf()
         btManager = getSystemService(BluetoothManager::class.java)
@@ -52,12 +52,11 @@ class ConnectActivity : AppCompatActivity() {
         setContentView(R.layout.activity_connect)
         supportActionBar?.hide()
 
-        rcAdapter = ItemAdapter(this, devices.toList(), onItemClick)
+        rcAdapter = AdapterBT(devices.toList(), onItemClick)
         with(findViewById<RecyclerView>(R.id.deviceListRv))
         {
             adapter = rcAdapter
             layoutManager = LinearLayoutManager(context)
-
         }
 
         if (btAdapter == null) {
@@ -66,7 +65,7 @@ class ConnectActivity : AppCompatActivity() {
             return
         }
 
-        findViewById<Button>(R.id.refreshBtn).setOnClickListener {
+        findViewById<Button>(R.id.refreshBTBtn).setOnClickListener {
             pairedDeviceList()
         }
 
@@ -83,13 +82,11 @@ class ConnectActivity : AppCompatActivity() {
         Log.i("onCreate: ", "Got to pairedDeviceList()")
         pairedDeviceList()
         Log.i("onCreate: ", "Passed pairedDeviceList()")
-        rcAdapter = ItemAdapter(this, devices.toList(), onItemClick)
-        with(findViewById<RecyclerView>(R.id.deviceListRv))
-        {
-            adapter = rcAdapter
-        }
+        rcAdapter = AdapterBT(devices.toList(), onItemClick)
+        findViewById<RecyclerView>(R.id.deviceListRv).adapter = rcAdapter
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
     private fun turnOnBluetooth(req: Boolean): Boolean {
         if (btAdapter?.isEnabled == false) {
 
@@ -104,6 +101,7 @@ class ConnectActivity : AppCompatActivity() {
         return false
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
     @SuppressLint("MissingPermission")
     private fun pairedDeviceList() {
         if (requestBt()) {
@@ -116,10 +114,11 @@ class ConnectActivity : AppCompatActivity() {
             return
         }
         devices = btAdapter!!.bondedDevices
-        rcAdapter = ItemAdapter(this, devices.toList(), onItemClick)
+        rcAdapter = AdapterBT(devices.toList(), onItemClick)
         findViewById<RecyclerView>(R.id.deviceListRv).adapter = rcAdapter
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
     private fun requestBt(): Boolean {
         if (checkSelfPermission(perms[0]) == PackageManager.PERMISSION_GRANTED)
         {
@@ -132,7 +131,7 @@ class ConnectActivity : AppCompatActivity() {
                 setMessage("Please allow us to use bluetooth or we gotta send Elnur over to you\nThe declination will crash the app")
                 setTitle("Bluetooth restricted")
                 setPositiveButton("Ok :)") { _, _ ->
-                    requestPermissions(perms, REQUEST_CODE_BT)
+                    requestPermissions(perms, bTRQ)
                 }
                   setNegativeButton("No") { _, _ ->
                       exitProcess(1)
@@ -142,21 +141,22 @@ class ConnectActivity : AppCompatActivity() {
         else
         {
 //            ActivityCompat.requestPermissions(this@ConnectActivity, perms, REQUEST_CODE_BT)
-            requestPermissions(perms, REQUEST_CODE_BT)
+            requestPermissions(perms, bTRQ)
         }
         return true
     }
 
+    @RequiresApi(Build.VERSION_CODES.S)
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_CODE_BT) {
+        if (requestCode == bTRQ) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Log.i("requestPerm", "Set perms")
-                with(findViewById<Button>(R.id.refreshBtn))
+                with(findViewById<Button>(R.id.refreshBTBtn))
                 {
                     text = getString(R.string.refresh)
                     setOnClickListener {
@@ -169,9 +169,9 @@ class ConnectActivity : AppCompatActivity() {
                 Log.e("Request_Permission", "Declined")
 
 //                exitProcess(1)
-                with(findViewById<Button>(R.id.refreshBtn))
+                with(findViewById<Button>(R.id.refreshBTBtn))
                 {
-                    text = "Provide bt permission"
+                    text = getString(R.string.provicepermission)
                     setOnClickListener {
                         requestBt()
                     }

@@ -1,33 +1,25 @@
-package com.example.idkcontroll.connectrecycler
+package com.example.idkcontroll
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
-import android.content.Context
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.recyclerview.widget.RecyclerView
-import com.example.idkcontroll.ConnectActivity
-import com.example.idkcontroll.R
 
-class ItemAdapter(
-    private val context: Context,
+class AdapterBT(
     private val dataset: List<BluetoothDevice>,
     private var onItemClick: (Int) -> Unit
 
-) : RecyclerView.Adapter<ItemAdapter.ItemViewHolder>() {
+) : RecyclerView.Adapter<AdapterBT.ItemViewHolder>() {
     class ItemViewHolder(
         val view: View,
-    ) : RecyclerView.ViewHolder(view) {
-        private val deviceName: TextView = view.findViewById(R.id.itemName)
-    }
+    ) : RecyclerView.ViewHolder(view)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ItemViewHolder {
         val adapterLayout: View =
             LayoutInflater.from(parent.context).inflate(R.layout.item_connect, parent, false)
-        val aViewHolder = ItemViewHolder(adapterLayout)
         return ItemViewHolder(adapterLayout)
     }
 
@@ -40,7 +32,7 @@ class ItemAdapter(
             setOnClickListener {
                 val pos = holder.adapterPosition
                 if (pos != RecyclerView.NO_POSITION)
-                    this@ItemAdapter.onItemClick(pos)
+                    this@AdapterBT.onItemClick(pos)
             }
         }
     }

@@ -7,14 +7,17 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
 import android.content.pm.PackageManager
-import androidx.appcompat.app.AppCompatActivity
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
-import android.view.View
+import android.view.InputDevice
+import android.view.KeyEvent
+import android.view.MotionEvent
 import android.view.WindowManager
-import android.widget.ProgressBar
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import com.example.idkcontroll.fragments.ConfigFragment
@@ -36,32 +39,68 @@ class ControlActivity : AppCompatActivity() {
         var btSocket: BluetoothSocket? = null
         lateinit var btManager: BluetoothManager
         lateinit var btAdapter: BluetoothAdapter
-        lateinit var progressBar: ProgressBar
+        var controllers: MutableList<InputDevice> = mutableListOf()
+        var driver1id: Int? = null
+        var driver2id: Int? = null
+        var connectSuccessful = true
+        val mainFr = MainFragment()
+        val configFr = ConfigFragment()
+        val pairingFr = PairingFragment()
+        const val bTSCANRQ = 2
+        @RequiresApi(Build.VERSION_CODES.O_MR1)
+        fun findControllers()
+        {
+            controllers.clear()
+            for (deviceId: Int in InputDevice.getDeviceIds())
+            {
+                val device = InputDevice.getDevice(deviceId)
+                val sources = device.sources
+                if (device.isEnabled && sources and InputDevice.SOURCE_CLASS_JOYSTICK == InputDevice.SOURCE_CLASS_JOYSTICK && sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD)
+                {
+                    controllers
+                        .takeIf { !it.contains(device) }
+                        ?.add(device)
+                }
+            }
+        }
     }
 
-    private var connectSuccessful = true
-    private val mainFr = MainFragment()
-    private val configFr = ConfigFragment()
-    private val pairingFr = PairingFragment()
-    private val REQUEST_CODE_BTSCAN = 2
-
+    @RequiresApi(Build.VERSION_CODES.S)
     private val perms: Array<String> = arrayOf(Manifest.permission.BLUETOOTH_SCAN)
 
+    @RequiresApi(Build.VERSION_CODES.S)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_control)
 
-        macadress = intent.getStringExtra(ConnectActivity.macadressExtraName)
+        btManager = getSystemService(BluetoothManager::class.java)
+        btAdapter = btManager.adapter
 
-        changeFragment(pairingFr)
+        if (macadress != intent.getStringExtra(ConnectActivity.macadressExtraName))
+        {
+            macadress = intent.getStringExtra(ConnectActivity.macadressExtraName)
+            btSocket = null
+            isConnected = false
+        }
 
         findViewById<BottomNavigationView>(R.id.bottomNav).setOnItemSelectedListener {
-            when (it.itemId)
-            {
-                R.id.ic_main -> changeFragment(mainFr)
+            var res = true
+            when (it.itemId) {
+                R.id.ic_main -> {
+                    /*
+                    if (driver1id == null || driver2id == null) {
+                        AlertDialog.Builder(this).apply {
+                            setMessage("You have to select game controllers first")
+                            setPositiveButton("Ok") { _, _ -> run {} }
+                        }.create().show()
+                        res = false
+                    } else
+                        */
+                        changeFragment(mainFr)
+                }
                 R.id.ic_config -> changeFragment(configFr)
             }
-            true
+            res
         }
 
         if (checkSelfPermission(perms[0]) != PackageManager.PERMISSION_GRANTED)
@@ -71,7 +110,7 @@ class ControlActivity : AppCompatActivity() {
                 setMessage("Please allow the permission and let us connect to your device")
                 setPositiveButton("Ok :)") {_, _ ->
                     run {
-                        ActivityCompat.requestPermissions(this@ControlActivity, perms, REQUEST_CODE_BTSCAN)
+                        ActivityCompat.requestPermissions(this@ControlActivity, perms, bTSCANRQ)
                     }
                 }
                 setNegativeButton("No") {_, _ ->
@@ -82,64 +121,130 @@ class ControlActivity : AppCompatActivity() {
             }.create().show()
             return
         }
-        pairDevices()
+        pairDevices(1)
     }
 
-    private fun pairDevices()
-    {
-        btManager = getSystemService(BluetoothManager::class.java)
-        btAdapter = btManager.adapter
+    private fun pairDevices(maxAttempts: Int) {
         GlobalScope.launch {
-            asyncPairDevices()
-        }.invokeOnCompletion {
-            this@ControlActivity.runOnUiThread(java.lang.Runnable {
-                window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
-            })
+            pairDevicesInner(maxAttempts)
         }
-        window.setFlags(
-            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-        )
-    }
-
-    private fun switchProgressbar(mode: Boolean)
-    {
-        if (mode)
-            progressBar.visibility = View.VISIBLE
-        else
-            progressBar.visibility = View.GONE
     }
 
     @SuppressLint("MissingPermission")
-    suspend fun asyncPairDevices() {
-        try {
-            if (btSocket == null || !isConnected)
-            {
+    suspend fun pairDevicesInner(maxAttempts: Int) {
+        var maxAttemptsCopy = maxAttempts
+        if (btSocket == null)
+            isConnected = false
+        if (isConnected)
+            return
+        this@ControlActivity.runOnUiThread {
+            changeFragment(pairingFr)
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+            )
+        }
+
+        while (maxAttemptsCopy-- > 0 && (btSocket == null || !isConnected)) {
+            try {
                 val device: BluetoothDevice = btAdapter.getRemoteDevice(macadress)
                 btSocket = device.createRfcommSocketToServiceRecord(myUUID)
                 btAdapter.cancelDiscovery()
                 btSocket!!.connect()
                 connectSuccessful = true
+            } catch (e: IOException) {
+                connectSuccessful = false
+                e.printStackTrace()
             }
-        } catch (e: IOException)
+            if (connectSuccessful) {
+                this@ControlActivity.runOnUiThread {
+                    changeFragment(configFr)
+                }
+                Log.i("BT Pairing", "Succeeded")
+                isConnected = true
+            }
+            else {
+                Log.w("BT Pairing", "Failed")
+                this@ControlActivity.runOnUiThread {
+                    Toast.makeText(this, "Failed to pair", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+        if (maxAttemptsCopy <= 0) {
+            this@ControlActivity.runOnUiThread {
+                window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+                this@ControlActivity.finish()
+            }
+            return
+        }
+        this@ControlActivity.runOnUiThread {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+        }
+    }
+
+    fun sendCommand(command: String) {
+        if (btSocket != null)
         {
-            connectSuccessful = false
-            e.printStackTrace()
+            try {
+                btSocket!!.outputStream.write(command.toByteArray())
+            } catch (e: IOException) {
+                Toast.makeText(this, "Failed to send", Toast.LENGTH_SHORT).show()
+                e.printStackTrace()
+            }
+        } else {
+            Toast.makeText(this, "Disconnected, repairing...", Toast.LENGTH_SHORT).show()
+            isConnected = false
+            pairDevices(3)
         }
-        if (!connectSuccessful) {
-            finish()
-            Log.w("BT Pairing", "Failed")
-            this@ControlActivity.runOnUiThread(java.lang.Runnable {
-            Toast.makeText(this, "Failed to pair", Toast.LENGTH_SHORT).show()
-            })
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == bTSCANRQ)
+        {
+            if (permissions.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)
+            {
+                Log.i("SCAN permission", "Allowed")
+                pairDevices(1)
+            } else
+            {
+                Log.e("SCAN permission", "Declined")
+                finish()
+            }
         }
-        else {
-            this@ControlActivity.runOnUiThread(java.lang.Runnable {
-                changeFragment(mainFr)
-            })
-            Log.i("BT Pairing", "Succeeded")
-            isConnected = true
+    }
+
+    override fun dispatchGenericMotionEvent(ev: MotionEvent?): Boolean {
+        when (ev?.device?.id)
+        {
+            driver1id -> {
+                return true
+            }
+            driver2id -> {
+
+            }
         }
+        return super.dispatchGenericMotionEvent(ev)
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
+        when (event?.device?.id)
+        {
+            driver1id -> {
+                mainFr.inputFragment.log("Keycode: " + event?.keyCode.toString())
+                mainFr.inputFragment.log("Repeat count: " + event?.repeatCount.toString())
+                mainFr.inputFragment.log("Action: " + event?.action.toString())
+                mainFr.inputFragment.submit()
+            }
+            driver2id -> {
+
+            }
+        }
+        return super.dispatchKeyEvent(event)
     }
 
     private fun changeFragment(fragment: Fragment?)
@@ -149,31 +254,5 @@ class ControlActivity : AppCompatActivity() {
         val transaction = supportFragmentManager.beginTransaction()
         transaction.replace(R.id.fragmentContainer, fragment)
         transaction.commit()
-    }
-
-    override fun onStop() {
-        super.onStop()
-        btSocket = null
-        isConnected = false
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == REQUEST_CODE_BTSCAN)
-        {
-            if (permissions.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)
-            {
-                Log.i("SCAN permission", "Allowed")
-                pairDevices()
-            } else
-            {
-                Log.e("SCAN permission", "Declined")
-                finish()
-            }
-        }
     }
 }

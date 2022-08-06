@@ -40,15 +40,32 @@
         <entry key="..\:/localTrash/AstonishingSidney/app/src/main/res/layout/item_btdevice.xml" value="0.14010416666666667" />
         <entry key="..\:/localTrash/AstonishingSidney/app/src/main/res/layout/item_config.xml" value="0.10989583333333333" />
         <entry key="..\:/trash/codez/IDControll/app/src/main/res/drawable-v24/ic_launcher_foreground.xml" value="0.314" />
+        <entry key="..\:/trash/codez/IDControll/app/src/main/res/drawable/ic_baseline_build_24.xml" value="0.5435" />
+        <entry key="..\:/trash/codez/IDControll/app/src/main/res/drawable/ic_baseline_play_arrow_24.xml" value="0.5435" />
         <entry key="..\:/trash/codez/IDControll/app/src/main/res/drawable/ic_bluetooth_icon.xml" value="0.314" />
+        <entry key="..\:/trash/codez/IDControll/app/src/main/res/drawable/ic_launcher_background.xml" value="0.5435" />
+        <entry key="..\:/trash/codez/IDControll/app/src/main/res/drawable/item_border.xml" value="0.402" />
+        <entry key="..\:/trash/codez/IDControll/app/src/main/res/drawable/shape_accent_circle.xml" value="0.5435" />
+        <entry key="..\:/trash/codez/IDControll/app/src/main/res/drawable/shape_border.xml" value="0.5435" />
+        <entry key="..\:/trash/codez/IDControll/app/src/main/res/drawable/shape_circle.xml" value="0.401" />
+        <entry key="..\:/trash/codez/IDControll/app/src/main/res/drawable/shape_first_circle.xml" value="0.314" />
+        <entry key="..\:/trash/codez/IDControll/app/src/main/res/drawable/shape_gray_circle.xml" value="0.402" />
+        <entry key="..\:/trash/codez/IDControll/app/src/main/res/drawable/shape_green_circle.xml" value="0.5425" />
+        <entry key="..\:/trash/codez/IDControll/app/src/main/res/drawable/shape_second_circle.xml" value="0.5435" />
+        <entry key="..\:/trash/codez/IDControll/app/src/main/res/layout/activity_connect.xml" value="0.40260416666666665" />
         <entry key="..\:/trash/codez/IDControll/app/src/main/res/layout/activity_control.xml" value="0.3109375" />
         <entry key="..\:/trash/codez/IDControll/app/src/main/res/layout/fragment_config.xml" value="0.3109375" />
         <entry key="..\:/trash/codez/IDControll/app/src/main/res/layout/fragment_connection.xml" value="0.3098958333333333" />
+        <entry key="..\:/trash/codez/IDControll/app/src/main/res/layout/fragment_controller.xml" value="0.40260416666666665" />
         <entry key="..\:/trash/codez/IDControll/app/src/main/res/layout/fragment_input.xml" value="0.3109375" />
-        <entry key="..\:/trash/codez/IDControll/app/src/main/res/layout/fragment_main.xml" value="0.3109375" />
+        <entry key="..\:/trash/codez/IDControll/app/src/main/res/layout/fragment_main.xml" value="0.33" />
         <entry key="..\:/trash/codez/IDControll/app/src/main/res/layout/fragment_output.xml" value="0.3109375" />
         <entry key="..\:/trash/codez/IDControll/app/src/main/res/layout/fragment_pairing.xml" value="0.33" />
+        <entry key="..\:/trash/codez/IDControll/app/src/main/res/layout/item_btdevice.xml" value="0.40260416666666665" />
+        <entry key="..\:/trash/codez/IDControll/app/src/main/res/layout/item_config.xml" value="0.40260416666666665" />
         <entry key="..\:/trash/codez/IDControll/app/src/main/res/layout/item_connect.xml" value="0.3109375" />
+        <entry key="..\:/trash/codez/IDControll/app/src/main/res/layout/item_controller.xml" value="0.4015625" />
+        <entry key="..\:/trash/codez/IDControll/app/src/main/res/menu/menu.xml" value="0.55" />
       </map>
     </option>
   </component>
