@@ -87,15 +87,14 @@ class ControlActivity : AppCompatActivity() {
             var res = true
             when (it.itemId) {
                 R.id.ic_main -> {
-                    /*
-                    if (driver1id == null || driver2id == null) {
+//                    if (driver1id == null || driver2id == null) {
+                    if (driver1id == null) {
                         AlertDialog.Builder(this).apply {
                             setMessage("You have to select game controllers first")
                             setPositiveButton("Ok") { _, _ -> run {} }
                         }.create().show()
                         res = false
                     } else
-                        */
                         changeFragment(mainFr)
                 }
                 R.id.ic_config -> changeFragment(configFr)
@@ -103,6 +102,7 @@ class ControlActivity : AppCompatActivity() {
             res
         }
 
+        /*
         if (checkSelfPermission(perms[0]) != PackageManager.PERMISSION_GRANTED)
         {
             AlertDialog.Builder(this).apply {
@@ -121,6 +121,8 @@ class ControlActivity : AppCompatActivity() {
             }.create().show()
             return
         }
+        */
+        ActivityCompat.requestPermissions(this@ControlActivity, perms, bTSCANRQ)
         pairDevices(1)
     }
 
@@ -145,7 +147,7 @@ class ControlActivity : AppCompatActivity() {
             )
         }
 
-        while (maxAttemptsCopy-- > 0 && (btSocket == null || !isConnected)) {
+        while (--maxAttemptsCopy >= 0 && (btSocket == null || !isConnected)) {
             try {
                 val device: BluetoothDevice = btAdapter.getRemoteDevice(macadress)
                 btSocket = device.createRfcommSocketToServiceRecord(myUUID)
@@ -160,18 +162,20 @@ class ControlActivity : AppCompatActivity() {
                 this@ControlActivity.runOnUiThread {
                     changeFragment(configFr)
                 }
-                Log.i("BT Pairing", "Succeeded")
+                Log.i("bluetooth Pairing", "Succeeded")
                 isConnected = true
+                return
             }
             else {
-                Log.w("BT Pairing", "Failed")
+                Log.w("bluetooth Pairing", "Failed")
                 this@ControlActivity.runOnUiThread {
                     Toast.makeText(this, "Failed to pair", Toast.LENGTH_SHORT).show()
                 }
             }
         }
-        if (maxAttemptsCopy <= 0) {
+        if (maxAttemptsCopy < 0) {
             this@ControlActivity.runOnUiThread {
+                Toast.makeText(this, "Time out", Toast.LENGTH_SHORT)
                 window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
                 this@ControlActivity.finish()
             }
@@ -182,11 +186,27 @@ class ControlActivity : AppCompatActivity() {
         }
     }
 
-    fun sendCommand(command: String) {
+    private fun sendCommand(command: String) {
         if (btSocket != null)
         {
             try {
                 btSocket!!.outputStream.write(command.toByteArray())
+            } catch (e: IOException) {
+                Toast.makeText(this, "Failed to send", Toast.LENGTH_SHORT).show()
+                e.printStackTrace()
+            }
+        } else {
+            Toast.makeText(this, "Disconnected, repairing...", Toast.LENGTH_SHORT).show()
+            isConnected = false
+            pairDevices(3)
+        }
+    }
+
+    private fun sendCommand(command: Int) {
+        if (btSocket != null)
+        {
+            try {
+                btSocket!!.outputStream.write(command)
             } catch (e: IOException) {
                 Toast.makeText(this, "Failed to send", Toast.LENGTH_SHORT).show()
                 e.printStackTrace()
@@ -222,6 +242,10 @@ class ControlActivity : AppCompatActivity() {
         when (ev?.device?.id)
         {
             driver1id -> {
+                mainFr.inputFragment.log("LT: " + ev?.getAxisValue(MotionEvent.AXIS_LTRIGGER))
+                mainFr.inputFragment.log("RT: " + ev?.getAxisValue(MotionEvent.AXIS_RTRIGGER))
+                mainFr.inputFragment.log((ev?.actionButton.toString() + ": " + ev?.pressure))
+                mainFr.inputFragment.submit()
                 return true
             }
             driver2id -> {
@@ -232,9 +256,25 @@ class ControlActivity : AppCompatActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
+        if (event?.repeatCount != null && event.repeatCount > 1)
+            return super.dispatchKeyEvent(event)
         when (event?.device?.id)
         {
             driver1id -> {
+                if (event?.keyCode == 62)
+                {
+                    if (event.action == 0) {
+                        sendCommand(62)
+                    } else
+                    {
+                        sendCommand(61)
+                    }
+                } else if (event?.keyCode == 102)
+                {
+                    sendCommand(500)
+                    sendCommand(250)
+                }
+
                 mainFr.inputFragment.log("Keycode: " + event?.keyCode.toString())
                 mainFr.inputFragment.log("Repeat count: " + event?.repeatCount.toString())
                 mainFr.inputFragment.log("Action: " + event?.action.toString())
