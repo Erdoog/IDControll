@@ -16,7 +16,6 @@ import android.view.MotionEvent
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.annotation.RequiresApi
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
@@ -27,6 +26,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import java.io.IOException
+import java.lang.NullPointerException
 import java.util.*
 
 class ControlActivity : AppCompatActivity() {
@@ -79,6 +79,7 @@ class ControlActivity : AppCompatActivity() {
         if (macadress != intent.getStringExtra(ConnectActivity.macadressExtraName))
         {
             macadress = intent.getStringExtra(ConnectActivity.macadressExtraName)
+            btSocket?.close()
             btSocket = null
             isConnected = false
         }
@@ -88,13 +89,13 @@ class ControlActivity : AppCompatActivity() {
             when (it.itemId) {
                 R.id.ic_main -> {
 //                    if (driver1id == null || driver2id == null) {
-                    if (driver1id == null) {
-                        AlertDialog.Builder(this).apply {
-                            setMessage("You have to select game controllers first")
-                            setPositiveButton("Ok") { _, _ -> run {} }
-                        }.create().show()
-                        res = false
-                    } else
+//                    if (driver1id == null) {
+//                        AlertDialog.Builder(this).apply {
+//                            setMessage("You have to select game controllers first")
+//                            setPositiveButton("Ok") { _, _ -> run {} }
+//                        }.create().show()
+//                        res = false
+//                    } else
                         changeFragment(mainFr)
                 }
                 R.id.ic_config -> changeFragment(configFr)
@@ -122,32 +123,32 @@ class ControlActivity : AppCompatActivity() {
             return
         }
         */
-        ActivityCompat.requestPermissions(this@ControlActivity, perms, bTSCANRQ)
+        if (checkSelfPermission(perms[0]) != PackageManager.PERMISSION_GRANTED)
+            ActivityCompat.requestPermissions(this@ControlActivity, perms, bTSCANRQ)
         pairDevices(1)
     }
 
     private fun pairDevices(maxAttempts: Int) {
+        if (btSocket == null)
+            isConnected = false
+        if (isConnected)
+            return
+        changeFragment(pairingFr)
+        window.setFlags(
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+        )
         GlobalScope.launch {
             pairDevicesInner(maxAttempts)
         }
     }
 
     @SuppressLint("MissingPermission")
-    suspend fun pairDevicesInner(maxAttempts: Int) {
+    fun pairDevicesInner(maxAttempts: Int) {
         var maxAttemptsCopy = maxAttempts
-        if (btSocket == null)
-            isConnected = false
-        if (isConnected)
-            return
-        this@ControlActivity.runOnUiThread {
-            changeFragment(pairingFr)
-            window.setFlags(
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-            )
-        }
 
         while (--maxAttemptsCopy >= 0 && (btSocket == null || !isConnected)) {
+            connectSuccessful = false
             try {
                 val device: BluetoothDevice = btAdapter.getRemoteDevice(macadress)
                 btSocket = device.createRfcommSocketToServiceRecord(myUUID)
@@ -157,6 +158,11 @@ class ControlActivity : AppCompatActivity() {
             } catch (e: IOException) {
                 connectSuccessful = false
                 e.printStackTrace()
+                Log.e("Bluetooth socket", "IO exception")
+            } catch (e: NullPointerException)
+            {
+                e.printStackTrace()
+                Log.e("Bluetooth socket", "null")
             }
             if (connectSuccessful) {
                 this@ControlActivity.runOnUiThread {
@@ -164,7 +170,6 @@ class ControlActivity : AppCompatActivity() {
                 }
                 Log.i("bluetooth Pairing", "Succeeded")
                 isConnected = true
-                return
             }
             else {
                 Log.w("bluetooth Pairing", "Failed")
@@ -173,20 +178,19 @@ class ControlActivity : AppCompatActivity() {
                 }
             }
         }
-        if (maxAttemptsCopy < 0) {
+        this@ControlActivity.runOnUiThread {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+        }
+        if (!isConnected || btSocket == null) {
             this@ControlActivity.runOnUiThread {
-                Toast.makeText(this, "Time out", Toast.LENGTH_SHORT)
-                window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+                Toast.makeText(this, "Time out", Toast.LENGTH_SHORT).show()
                 this@ControlActivity.finish()
             }
             return
         }
-        this@ControlActivity.runOnUiThread {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
-        }
     }
 
-    private fun sendCommand(command: String) {
+    fun sendCommand(command: String) {
         if (btSocket != null)
         {
             try {
@@ -202,11 +206,12 @@ class ControlActivity : AppCompatActivity() {
         }
     }
 
-    private fun sendCommand(command: Int) {
+    fun sendCommand(command: Int) {
         if (btSocket != null)
         {
             try {
                 btSocket!!.outputStream.write(command)
+                Log.i("Sent command", command.toString())
             } catch (e: IOException) {
                 Toast.makeText(this, "Failed to send", Toast.LENGTH_SHORT).show()
                 e.printStackTrace()
