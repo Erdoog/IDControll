@@ -127,8 +127,9 @@ class ControlActivity : AppCompatActivity() {
     }
 
     private fun pairDevices(maxAttempts: Int) {
-        if (btSocket != null && btSocket!!.isConnected)
+        if (btSocket != null && btSocket!!.isConnected) {
             return
+        }
         changeFragment(pairingFr)
         window.setFlags(
             WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
@@ -176,7 +177,7 @@ class ControlActivity : AppCompatActivity() {
         this@ControlActivity.runOnUiThread {
             window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
         }
-        if (btSocket == null || btSocket!!.isConnected) {
+        if (!btSocket!!.isConnected || btSocket == null) {
             this@ControlActivity.runOnUiThread {
                 Toast.makeText(this, "Time out", Toast.LENGTH_SHORT).show()
                 this@ControlActivity.finish()
@@ -186,7 +187,7 @@ class ControlActivity : AppCompatActivity() {
     }
 
     fun sendCommand(command: String) {
-        if (btSocket != null)
+        if (btSocket != null && !btSocket!!.isConnected)
         {
             try {
                 btSocket!!.outputStream.write(command.toByteArray())
@@ -201,7 +202,7 @@ class ControlActivity : AppCompatActivity() {
     }
 
     fun sendCommand(command: Int) {
-        if (btSocket != null)
+        if (btSocket != null && !btSocket!!.isConnected)
         {
             try {
                 btSocket!!.outputStream.write(command)
@@ -237,17 +238,31 @@ class ControlActivity : AppCompatActivity() {
     }
 
     override fun dispatchGenericMotionEvent(ev: MotionEvent?): Boolean {
-        when (ev?.device?.id)
+        if (ev == null)
+            return super.dispatchGenericMotionEvent(ev)
+        when (ev.device.id)
         {
             driver1id -> {
-                mainFr.inputFragment.log("LT: " + ev?.getAxisValue(MotionEvent.AXIS_LTRIGGER))
-                mainFr.inputFragment.log("RT: " + ev?.getAxisValue(MotionEvent.AXIS_RTRIGGER))
-                mainFr.inputFragment.log((ev?.actionButton.toString() + ": " + ev?.pressure))
-                mainFr.inputFragment.submit()
+                sendCommand("1TL " + ev.getAxisValue(MotionEvent.AXIS_LTRIGGER).toString() + '\n')
+                sendCommand("1TR " + ev.getAxisValue(MotionEvent.AXIS_RTRIGGER).toString() + '\n')
+                sendCommand("1SX " + ev.getAxisValue(MotionEvent.AXIS_X).toString() + '\n')
+                sendCommand("1SY " + ev.getAxisValue(MotionEvent.AXIS_Y).toString() + '\n')
+                sendCommand("1CX " + ev.getAxisValue(MotionEvent.AXIS_Z).toString() + '\n')
+                sendCommand("1CY " + ev.getAxisValue(MotionEvent.AXIS_RZ).toString() + '\n')
+                sendCommand("1DX " + ev.getAxisValue(MotionEvent.AXIS_HAT_Y).toString() + '\n')
+                sendCommand("1DY " + ev.getAxisValue(MotionEvent.AXIS_HAT_X).toString() + '\n')
                 return true
             }
             driver2id -> {
-
+                sendCommand("2TL " + ev.getAxisValue(MotionEvent.AXIS_LTRIGGER).toString() + '\n')
+                sendCommand("2TR " + ev.getAxisValue(MotionEvent.AXIS_RTRIGGER).toString() + '\n')
+                sendCommand("2SX " + ev.getAxisValue(MotionEvent.AXIS_X).toString() + '\n')
+                sendCommand("2SY " + ev.getAxisValue(MotionEvent.AXIS_Y).toString() + '\n')
+                sendCommand("2CX " + ev.getAxisValue(MotionEvent.AXIS_Z).toString() + '\n')
+                sendCommand("2CY " + ev.getAxisValue(MotionEvent.AXIS_RZ).toString() + '\n')
+                sendCommand("2DX " + ev.getAxisValue(MotionEvent.AXIS_HAT_Y).toString() + '\n')
+                sendCommand("2DY " + ev.getAxisValue(MotionEvent.AXIS_HAT_X).toString() + '\n')
+                return true
             }
         }
         return super.dispatchGenericMotionEvent(ev)
@@ -259,27 +274,12 @@ class ControlActivity : AppCompatActivity() {
         when (event?.device?.id)
         {
             driver1id -> {
-                if (event?.keyCode == 62)
-                {
-                    if (event.action == 0) {
-                        sendCommand(62)
-                    } else
-                    {
-                        sendCommand(61)
-                    }
-                } else if (event?.keyCode == 102)
-                {
-                    sendCommand(500)
-                    sendCommand(250)
-                }
-
-                mainFr.inputFragment.log("Keycode: " + event?.keyCode.toString())
-                mainFr.inputFragment.log("Repeat count: " + event?.repeatCount.toString())
-                mainFr.inputFragment.log("Action: " + event?.action.toString())
-                mainFr.inputFragment.submit()
+                if (event != null)
+                    sendCommand("1BT " + event.keyCode.toString() + '\n')
             }
             driver2id -> {
-
+                if (event != null)
+                    sendCommand("2BT " + event.keyCode.toString() + '\n')
             }
         }
         return super.dispatchKeyEvent(event)
