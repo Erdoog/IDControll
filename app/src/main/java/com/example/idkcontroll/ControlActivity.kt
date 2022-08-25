@@ -32,7 +32,6 @@ import java.util.*
 class ControlActivity : AppCompatActivity() {
 
     companion object {
-        var isConnected = false
 //        val myUUID: UUID = UUID.randomUUID()
         val myUUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
         var macadress: String? = null
@@ -81,7 +80,6 @@ class ControlActivity : AppCompatActivity() {
             macadress = intent.getStringExtra(ConnectActivity.macadressExtraName)
             btSocket?.close()
             btSocket = null
-            isConnected = false
         }
 
         findViewById<BottomNavigationView>(R.id.bottomNav).setOnItemSelectedListener {
@@ -129,9 +127,7 @@ class ControlActivity : AppCompatActivity() {
     }
 
     private fun pairDevices(maxAttempts: Int) {
-        if (btSocket == null)
-            isConnected = false
-        if (isConnected)
+        if (btSocket != null && btSocket!!.isConnected)
             return
         changeFragment(pairingFr)
         window.setFlags(
@@ -147,7 +143,7 @@ class ControlActivity : AppCompatActivity() {
     fun pairDevicesInner(maxAttempts: Int) {
         var maxAttemptsCopy = maxAttempts
 
-        while (--maxAttemptsCopy >= 0 && (btSocket == null || !isConnected)) {
+        while (--maxAttemptsCopy >= 0 && (btSocket == null || !btSocket!!.isConnected)) {
             connectSuccessful = false
             try {
                 val device: BluetoothDevice = btAdapter.getRemoteDevice(macadress)
@@ -169,7 +165,6 @@ class ControlActivity : AppCompatActivity() {
                     changeFragment(configFr)
                 }
                 Log.i("bluetooth Pairing", "Succeeded")
-                isConnected = true
             }
             else {
                 Log.w("bluetooth Pairing", "Failed")
@@ -181,7 +176,7 @@ class ControlActivity : AppCompatActivity() {
         this@ControlActivity.runOnUiThread {
             window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
         }
-        if (!isConnected || btSocket == null) {
+        if (btSocket == null || btSocket!!.isConnected) {
             this@ControlActivity.runOnUiThread {
                 Toast.makeText(this, "Time out", Toast.LENGTH_SHORT).show()
                 this@ControlActivity.finish()
@@ -201,7 +196,6 @@ class ControlActivity : AppCompatActivity() {
             }
         } else {
             Toast.makeText(this, "Disconnected, repairing...", Toast.LENGTH_SHORT).show()
-            isConnected = false
             pairDevices(3)
         }
     }
@@ -218,7 +212,6 @@ class ControlActivity : AppCompatActivity() {
             }
         } else {
             Toast.makeText(this, "Disconnected, repairing...", Toast.LENGTH_SHORT).show()
-            isConnected = false
             pairDevices(3)
         }
     }
