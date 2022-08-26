@@ -8,7 +8,6 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import androidx.fragment.app.Fragment
-import com.example.idkcontroll.ControlActivity
 import com.example.idkcontroll.R
 
 /**
@@ -32,13 +31,14 @@ class InputFragment : Fragment() {
         return inflater.inflate(R.layout.fragment_input, container, false)
     }
 
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         view.findViewById<Button>(R.id.submitBtn).setOnClickListener {
             val command: String = view.findViewById<EditText>(R.id.inputEd).text.toString()
             if (command != "")
             {
 //                (activity as? ControlActivity)!!.sendCommand(command + "\n")
-                (activity as? ControlActivity)!!.sendCommand(command)
+//                (activity as? ControlActivity)!!.sendCommand(command)
                 view.findViewById<EditText>(R.id.inputEd).text.clear()
             }
         }

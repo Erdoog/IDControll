@@ -15,8 +15,6 @@ import com.example.idkcontroll.R
 class MainFragment : Fragment() {
     val inputFragment = InputFragment()
     private val outputFragment = OutputFragment()
-    private val controller1Fragment= ControllerFragment.newInstance(true)
-    private val controller2Fragment= ControllerFragment.newInstance(false)
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -32,8 +30,6 @@ class MainFragment : Fragment() {
 
         transaction.replace(R.id.fragmentContainerInput, inputFragment)
         transaction.replace(R.id.fragmentContainerOutput, outputFragment)
-        transaction.replace(R.id.fragmentContainerController1, controller1Fragment)
-        transaction.replace(R.id.fragmentContainerController2, controller2Fragment)
 
         transaction.commit()
     }

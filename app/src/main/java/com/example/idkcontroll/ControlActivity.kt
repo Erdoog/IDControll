@@ -23,14 +23,12 @@ import com.example.idkcontroll.fragments.ConfigFragment
 import com.example.idkcontroll.fragments.MainFragment
 import com.example.idkcontroll.fragments.PairingFragment
 import com.google.android.material.bottomnavigation.BottomNavigationView
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import java.io.IOException
-import java.lang.NullPointerException
 import java.util.*
 
-class ControlActivity : AppCompatActivity() {
 
+class ControlActivity : AppCompatActivity() {
     companion object {
 //        val myUUID: UUID = UUID.randomUUID()
         val myUUID: UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB")
@@ -62,6 +60,23 @@ class ControlActivity : AppCompatActivity() {
                 }
             }
         }
+
+    }
+
+    fun <T> throttleFirst(
+        skipMs: Long = 300L,
+        coroutineScope: CoroutineScope,
+        destinationFunction: (T) -> Unit
+    ): (T) -> Unit {
+        var throttleJob: Job? = null
+        return { param: T ->
+            if (throttleJob?.isCompleted != false) {
+                throttleJob = coroutineScope.launch {
+                    destinationFunction(param)
+                    delay(skipMs)
+                }
+            }
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.S)
@@ -71,6 +86,14 @@ class ControlActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_control)
+
+        throttle = throttleFirst(50L, GlobalScope) { eve ->
+            this@ControlActivity.runOnUiThread {
+                mainFr.inputFragment.log(eve.toString())
+                mainFr.inputFragment.submit()
+            }
+        }
+
 
         btManager = getSystemService(BluetoothManager::class.java)
         btAdapter = btManager.adapter
@@ -187,7 +210,7 @@ class ControlActivity : AppCompatActivity() {
     }
 
     fun sendCommand(command: String) {
-        if (btSocket != null && !btSocket!!.isConnected)
+        if (btSocket != null && btSocket!!.isConnected)
         {
             try {
                 btSocket!!.outputStream.write(command.toByteArray())
@@ -217,6 +240,8 @@ class ControlActivity : AppCompatActivity() {
         }
     }
 
+
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -237,20 +262,17 @@ class ControlActivity : AppCompatActivity() {
         }
     }
 
+    lateinit var throttle: ((Float) -> Unit)
+
     override fun dispatchGenericMotionEvent(ev: MotionEvent?): Boolean {
         if (ev == null)
             return super.dispatchGenericMotionEvent(ev)
         when (ev.device.id)
         {
             driver1id -> {
-                sendCommand("1TL " + ev.getAxisValue(MotionEvent.AXIS_LTRIGGER).toString() + '\n')
-                sendCommand("1TR " + ev.getAxisValue(MotionEvent.AXIS_RTRIGGER).toString() + '\n')
-                sendCommand("1SX " + ev.getAxisValue(MotionEvent.AXIS_X).toString() + '\n')
-                sendCommand("1SY " + ev.getAxisValue(MotionEvent.AXIS_Y).toString() + '\n')
-                sendCommand("1CX " + ev.getAxisValue(MotionEvent.AXIS_Z).toString() + '\n')
-                sendCommand("1CY " + ev.getAxisValue(MotionEvent.AXIS_RZ).toString() + '\n')
-                sendCommand("1DX " + ev.getAxisValue(MotionEvent.AXIS_HAT_Y).toString() + '\n')
-                sendCommand("1DY " + ev.getAxisValue(MotionEvent.AXIS_HAT_X).toString() + '\n')
+//                mainFr.inputFragment.log(ev.getAxisValue(MotionEvent.AXIS_RTRIGGER).toString())
+//                mainFr.inputFragment.submit()
+                throttle(ev.getAxisValue(MotionEvent.AXIS_RTRIGGER))
                 return true
             }
             driver2id -> {
@@ -269,17 +291,13 @@ class ControlActivity : AppCompatActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent?): Boolean {
-        if (event?.repeatCount != null && event.repeatCount > 1)
+        if (event == null || event.repeatCount > 1)
             return super.dispatchKeyEvent(event)
-        when (event?.device?.id)
+        when (event.device.id)
         {
             driver1id -> {
-                if (event != null)
-                    sendCommand("1BT " + event.keyCode.toString() + '\n')
             }
             driver2id -> {
-                if (event != null)
-                    sendCommand("2BT " + event.keyCode.toString() + '\n')
             }
         }
         return super.dispatchKeyEvent(event)
