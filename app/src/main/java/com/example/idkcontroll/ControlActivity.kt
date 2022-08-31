@@ -63,22 +63,6 @@ class ControlActivity : AppCompatActivity() {
 
     }
 
-    fun <T> throttleFirst(
-        skipMs: Long = 300L,
-        coroutineScope: CoroutineScope,
-        destinationFunction: (T) -> Unit
-    ): (T) -> Unit {
-        var throttleJob: Job? = null
-        return { param: T ->
-            if (throttleJob?.isCompleted != false) {
-                throttleJob = coroutineScope.launch {
-                    destinationFunction(param)
-                    delay(skipMs)
-                }
-            }
-        }
-    }
-
     @RequiresApi(Build.VERSION_CODES.S)
     private val perms: Array<String> = arrayOf(Manifest.permission.BLUETOOTH_SCAN)
 
@@ -86,14 +70,6 @@ class ControlActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_control)
-
-        throttle = throttleFirst(50L, GlobalScope) { eve ->
-            this@ControlActivity.runOnUiThread {
-                mainFr.inputFragment.log(eve.toString())
-                mainFr.inputFragment.submit()
-            }
-        }
-
 
         btManager = getSystemService(BluetoothManager::class.java)
         btAdapter = btManager.adapter
@@ -213,15 +189,17 @@ class ControlActivity : AppCompatActivity() {
         if (btSocket != null && btSocket!!.isConnected)
         {
             try {
+//                btSocket!!.outputStream.write((command + '\n').toByteArray())
                 btSocket!!.outputStream.write(command.toByteArray())
+                return
             } catch (e: IOException) {
                 Toast.makeText(this, "Failed to send", Toast.LENGTH_SHORT).show()
                 e.printStackTrace()
-            }
-        } else {
-            Toast.makeText(this, "Disconnected, repairing...", Toast.LENGTH_SHORT).show()
-            pairDevices(3)
+                return
+            } catch (e: NullPointerException) {}
         }
+        Toast.makeText(this, "Disconnected, repairing...", Toast.LENGTH_SHORT).show()
+        pairDevices(3)
     }
 
     fun sendCommand(command: Int) {
@@ -262,7 +240,36 @@ class ControlActivity : AppCompatActivity() {
         }
     }
 
-    lateinit var throttle: ((Float) -> Unit)
+    fun <T> throttleFirst(
+        skipMs: Long = 300L,
+        coroutineScope: CoroutineScope,
+        destinationFunction: (T) -> Unit
+    ): (T) -> Unit {
+        var throttleJob: Job? = null
+        return { param: T ->
+            if (throttleJob?.isCompleted != false) {
+                throttleJob = coroutineScope.launch {
+                    destinationFunction(param)
+                    delay(skipMs)
+                }
+            }
+        }
+    }
+
+    var l: ((String) -> Unit) = throttleFirst(100L, GlobalScope) { eve ->
+        this@ControlActivity.runOnUiThread {
+            sendCommand(eve)
+            mainFr.inputFragment.log(eve[0] + eve[1].code.toString())
+        }
+    }
+
+    var r: ((String) -> Unit) = throttleFirst(100L, GlobalScope) { eve ->
+        this@ControlActivity.runOnUiThread {
+            sendCommand(eve)
+            mainFr.inputFragment.log(eve[0] + eve[1].code.toString())
+            mainFr.inputFragment.submit()
+        }
+    }
 
     override fun dispatchGenericMotionEvent(ev: MotionEvent?): Boolean {
         if (ev == null)
@@ -270,20 +277,36 @@ class ControlActivity : AppCompatActivity() {
         when (ev.device.id)
         {
             driver1id -> {
-//                mainFr.inputFragment.log(ev.getAxisValue(MotionEvent.AXIS_RTRIGGER).toString())
-//                mainFr.inputFragment.submit()
-                throttle(ev.getAxisValue(MotionEvent.AXIS_RTRIGGER))
+                if (ev.getAxisValue(MotionEvent.AXIS_RZ) == -1.0f || ev.getAxisValue(MotionEvent.AXIS_RZ) == 1.0f) {
+                        sendCommand("" + 'R' + ((-ev.getAxisValue(MotionEvent.AXIS_RZ) + 1) * 63 + 1).toInt().toChar())
+                        mainFr.inputFragment.log(
+                            "" + 'R' + ((-ev.getAxisValue(MotionEvent.AXIS_RZ) + 1) * 63 + 1).toInt().toChar().code
+                        )
+                }
+                else {
+                    r("" + 'R' + ((-ev.getAxisValue(MotionEvent.AXIS_RZ) + 1) * 63 + 1).toInt().toChar())
+                }
+                if (ev.getAxisValue(MotionEvent.AXIS_Y) == -1.0f || ev.getAxisValue(MotionEvent.AXIS_Y) == 1.0f) {
+                        sendCommand("" + 'L' + ((-ev.getAxisValue(MotionEvent.AXIS_Y) + 1) * 63 + 1).toInt().toChar())
+                        mainFr.inputFragment.log(
+                            "" + 'L' + ((-ev.getAxisValue(MotionEvent.AXIS_Y) + 1) * 63 + 1).toInt().toChar().code
+                        )
+                        mainFr.inputFragment.submit()
+                }
+                else {
+                    l( "" + 'L' + ((-ev.getAxisValue(MotionEvent.AXIS_Y) + 1) * 63 + 1).toInt().toChar())
+                }
                 return true
             }
             driver2id -> {
-                sendCommand("2TL " + ev.getAxisValue(MotionEvent.AXIS_LTRIGGER).toString() + '\n')
-                sendCommand("2TR " + ev.getAxisValue(MotionEvent.AXIS_RTRIGGER).toString() + '\n')
-                sendCommand("2SX " + ev.getAxisValue(MotionEvent.AXIS_X).toString() + '\n')
-                sendCommand("2SY " + ev.getAxisValue(MotionEvent.AXIS_Y).toString() + '\n')
-                sendCommand("2CX " + ev.getAxisValue(MotionEvent.AXIS_Z).toString() + '\n')
-                sendCommand("2CY " + ev.getAxisValue(MotionEvent.AXIS_RZ).toString() + '\n')
-                sendCommand("2DX " + ev.getAxisValue(MotionEvent.AXIS_HAT_Y).toString() + '\n')
-                sendCommand("2DY " + ev.getAxisValue(MotionEvent.AXIS_HAT_X).toString() + '\n')
+//                sendCommand("2TL " + ev.getAxisValue(MotionEvent.AXIS_LTRIGGER).toString() + '\n')
+//                sendCommand("2TR " + ev.getAxisValue(MotionEvent.AXIS_RTRIGGER).toString() + '\n')
+//                sendCommand("2SX " + ev.getAxisValue(MotionEvent.AXIS_X).toString() + '\n')
+//                sendCommand("2SY " + ev.getAxisValue(MotionEvent.AXIS_Y).toString() + '\n')
+//                sendCommand("2CX " + ev.getAxisValue(MotionEvent.AXIS_Z).toString() + '\n')
+//                sendCommand("2CY " + ev.getAxisValue(MotionEvent.AXIS_RZ).toString() + '\n')
+//                sendCommand("2DX " + ev.getAxisValue(MotionEvent.AXIS_HAT_Y).toString() + '\n')
+//                sendCommand("2DY " + ev.getAxisValue(MotionEvent.AXIS_HAT_X).toString() + '\n')
                 return true
             }
         }
